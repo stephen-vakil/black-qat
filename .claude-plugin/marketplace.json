@@ -1,0 +1,14 @@
+{
+  "name": "black-qat",
+  "owner": { "name": "black-qat contributors" },
+  "description": "Hides black-box tests from coding agents.",
+  "plugins": [
+    {
+      "name": "black-qat",
+      "source": "./",
+      "description": "Hides black-box tests from coding agents via a PreToolUse guard hook.",
+      "version": "0.1.0",
+      "license": "MIT"
+    }
+  ]
+}

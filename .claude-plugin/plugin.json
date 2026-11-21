@@ -1,0 +1,7 @@
+{
+  "name": "black-qat",
+  "version": "0.1.0",
+  "description": "Hides black-box tests from coding agents: a tester agent writes and runs hidden tests while a PreToolUse guard hook keeps the suite out of reach of everyone else.",
+  "license": "MIT",
+  "author": { "name": "black-qat contributors" }
+}
