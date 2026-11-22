@@ -16,7 +16,7 @@ Run the hidden suite and report. **Never read, search, or summarize the suite st
 
 ## Steps
 
-1. Run `bq-run` (add `--target <path>` if the caller named a checkout other than PROJECT_ROOT). First check `command -v bq-run`; then run exactly ONE of `bq-run` or `${CLAUDE_PLUGIN_ROOT}/bin/bq-run`, once. Never chain them with `||` (exit 1 means test failures, not "not found"). It prints one line of totals and exits 0 (all pass), 1 (failures), 2 (error) or 3 (no failures, but some scenarios skipped because required environment is missing). Skips are listed after `;` as `K skipped: <IDs> (<reason>)`.
+1. Run `bq-run` (add `--target <path>` if the caller named a checkout other than CHECKOUT). First check `command -v bq-run`; then run exactly ONE of `bq-run` or `${CLAUDE_PLUGIN_ROOT}/bin/bq-run`, once. Never chain them with `||` (exit 1 means test failures, not "not found"). It prints one line of totals and exits 0 (all pass), 1 (failures), 2 (error) or 3 (no failures, but some scenarios skipped because required environment is missing). Skips are listed after `;` as `K skipped: <IDs> (<reason>)`.
 2. Exit 0: return the totals line.
 3. Exit 2: return the error line unchanged.
 4. Exit 3: return the **Run summary** and **Couldn't run** sections from step 6. Do not triage skips. Not green.

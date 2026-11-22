@@ -46,3 +46,12 @@
 
 - Fake-provider seams so agentic tests run without a real key.
 - A config switch to treat skips as failures in CI.
+
+## Deferred from the whole-branch review (not implemented)
+
+- Skips are trusted: nothing checks a skip reason against the spec's required-environment list.
+- Bare repos: skills' `git worktree list` first line is the bare repo, so `projectRoot` mismatches (exit 2).
+- A config committed only on a worktree branch is ignored; spec step 0 run from a worktree writes the config into the main checkout.
+- The handback marker is written in PreToolUse; if another layer then denies the handback, SubagentStop skips that agent's final check.
+- The stop hook ignores `stop_hook_active`; Claude Code's built-in cap of 8 consecutive stop-hook continuations bounds the bounce loop.
+- A skip reason containing `(`, `)` or `,` makes the summary line ambiguous to parse.

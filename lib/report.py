@@ -12,6 +12,7 @@ from bq_common import TESTER_AGENT_TYPES, store_home
 
 ID = re.compile(r"\bBQ-\d+")
 COUNTS = re.compile(r"\d+ passed, \d+ failed(, \d+ skipped)?")
+ABS_PATH = re.compile(r"(/|[A-Za-z]:\\)\S.*")
 SKIP_LINE = re.compile(r"skipped: \S.*")
 ITEM = re.compile(r"- \[(proposed|inferred)\] \S.*")
 AMBIGUITY = re.compile(r"- \S.*")
@@ -60,13 +61,15 @@ def _blocked(lines):
 def _spec(lines):
     if len(lines) < 3:
         return "SPEC_READY needs the spec path and a Needs decision line"
+    if not ABS_PATH.fullmatch(lines[1]) or ID.search(lines[1]):
+        return "second line must be the absolute spec path, nothing else"
     return _list_tail(lines[2:], "Needs decision:", ITEM, "Needs decision")
 
 
 def _scenarios(lines):
     if len(lines) < 4:
         return "SCENARIOS_READY needs count, review line and New ambiguities"
-    if not re.fullmatch(r"\d+ scenarios", lines[1]):
+    if not re.fullmatch(r"\d+ scenarios?", lines[1]):
         return "second line must be '<N> scenarios'"
     if lines[2] != "Review with /black-qat:open":
         return "third line must be 'Review with /black-qat:open'"

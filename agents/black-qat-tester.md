@@ -109,8 +109,9 @@ SCENARIOS_READY
 <count> scenarios
 Review with /black-qat:open
 New ambiguities:
-- <one line each, behavior terms only>  (or "none")
+- <one line each, behavior terms only>
 ```
+(or, with none, the single line `New ambiguities: none`).
 
 ## MODE: tests
 
@@ -130,7 +131,7 @@ Input: optional target path (default `PROJECT_ROOT`).
 7. For every test that already passes (normal on an existing system), re-read it and confirm it asserts something concrete and specific to the scenario. Strengthen any that don't.
 8. Commit the store: `git -C "<STORE>" add -A && git -C "<STORE>" commit -m "tests: initial suite"`.
 
-Return `TESTS_READY` followed by `<passed> passed, <failed> failed, <skipped> skipped` (then, if any skipped, one line per reason: `skipped: <reason>`) — or `TESTS_BLOCKED` followed by the reason in behavior terms (e.g. "the spec's How to run section doesn't say how to start the server"). Use BLOCKED when the system can't be reached as specified or the spec is too incomplete to test; never work around it by reading code.
+Return `TESTS_READY` followed by `<passed> passed, <failed> failed, <skipped> skipped` (then, if any skipped, one line per reason: `skipped: <reason>`) — or the single line `TESTS_BLOCKED: <reason in behavior terms>` (e.g. `TESTS_BLOCKED: the spec's How to run section doesn't say how to start the server`). Use BLOCKED when the system can't be reached as specified or the spec is too incomplete to test; never work around it by reading code.
 
 ## MODE: triage
 
