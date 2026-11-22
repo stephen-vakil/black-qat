@@ -10,7 +10,7 @@ READABLE_FILES = ("SCENARIOS.md", "GAPS.md", "CHANGELOG.md", ".last/summary.txt"
 
 
 def main(argv, env: Mapping[str, str], cwd: str) -> int:
-    root = bq_common.find_root(cwd)
+    root = bq_common.home_root(bq_common.find_root(cwd))
     store = bq_common.store_dir(root, env)
     if not store.is_dir():
         print(no_suite_message(bq_common.project_name(root)))

@@ -4,7 +4,8 @@ import re
 from pathlib import Path
 from typing import Mapping, Optional
 
-from bq_common import TESTER_AGENT_TYPES, find_root, spec_path, store_home
+import report
+from bq_common import TESTER_AGENT_TYPES, find_root, home_root, spec_path, store_home
 
 TEXT_KEYS = ("file_path", "notebook_path", "path", "pattern", "command", "glob")
 PATH_KEYS = ("file_path", "notebook_path", "path")
@@ -34,7 +35,7 @@ def _tester_write_denied(tool_input: dict, cwd: str, env: Mapping[str, str]) -> 
     home = store_home(env)
     if _under(target, os.path.realpath(home)):
         return False
-    return target != os.path.realpath(spec_path(find_root(cwd)))
+    return target != os.path.realpath(spec_path(home_root(find_root(cwd))))
 
 
 def _references_store(tool_input: dict, cwd: str, env: Mapping[str, str]) -> bool:
@@ -66,6 +67,8 @@ def decide(event: dict, env: Mapping[str, str]) -> Optional[str]:
                 and tool_input.get("subagent_type") in TESTER_AGENT_TYPES):
             return DENY_DISPATCH
         if event.get("agent_type") in TESTER_AGENT_TYPES:
+            if tool == "SubagentHandback":
+                return report.handback_decision(event, env)
             if tool in WRITE_TOOLS and _tester_write_denied(tool_input, cwd, env):
                 return DENY_TESTER_WRITE
             return None

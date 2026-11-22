@@ -9,7 +9,7 @@ Write or revise the scenario register (no test code). **Never read, search, or s
 
 ## Resolve values (as text; no tool call may mention the store path)
 
-1. PROJECT_ROOT: run `git rev-parse --show-toplevel` (fallback: the current directory).
+1. PROJECT_ROOT: the main checkout, shared by every worktree of the repo: run `git worktree list --porcelain` and take the path after `worktree ` on its first line (fallback: the current directory). CHECKOUT: run `git rev-parse --show-toplevel` (fallback: the current directory); it differs from PROJECT_ROOT only inside a worktree.
 2. Project name: `project` from `<PROJECT_ROOT>/black-qat.config.json` if that file exists, else the basename of PROJECT_ROOT.
 3. STORE: get the home directory with `echo $HOME` (a command that does not contain the store path), then build STORE as text: `<home>/.black-qat/<project>`. Put it in the dispatch prompt only. Never put the store path in any tool call (Read, Grep, Glob, Bash).
 4. SPEC: `<PROJECT_ROOT>/` plus `specPath` from the config if set, else `docs/black-qat/spec.md`.

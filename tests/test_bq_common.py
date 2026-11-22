@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -36,6 +37,47 @@ class BqCommonTests(unittest.TestCase):
         sub = self.tmp / "wt" / "sub"
         sub.mkdir()
         self.assertEqual(bq_common.find_root(str(sub)), self.tmp / "wt")
+
+    def _git(self, *args, cwd):
+        subprocess.run(["git", *args], cwd=str(cwd), check=True,
+                       capture_output=True)
+
+    def test_home_root_of_real_worktree_is_main_checkout(self):
+        main = self.tmp / "myrepo"
+        main.mkdir()
+        self._git("init", "-q", cwd=main)
+        self._git("-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q",
+                  "--allow-empty", "-m", "init", cwd=main)
+        wt = main / ".worktrees" / "feature-x"
+        self._git("worktree", "add", "-q", str(wt), cwd=main)
+        sub = wt / "src"
+        sub.mkdir()
+        root = bq_common.find_root(str(sub))
+        self.assertEqual(root, wt)
+        self.assertEqual(bq_common.home_root(root), main)
+        self.assertEqual(bq_common.home_root(main), main)
+
+    def test_home_root_relative_gitdir_and_commondir(self):
+        main = self.tmp / "main"
+        gitdir = main / ".git" / "worktrees" / "wt"
+        gitdir.mkdir(parents=True)
+        (gitdir / "commondir").write_text("../..\n")
+        wt = self.tmp / "wt"
+        wt.mkdir()
+        (wt / ".git").write_text("gitdir: ../main/.git/worktrees/wt\n")
+        self.assertEqual(bq_common.home_root(wt), main)
+
+    def test_home_root_falls_back_to_root(self):
+        # plain dir, a dangling gitdir, and a submodule-style gitdir (no commondir)
+        self.assertEqual(bq_common.home_root(self.tmp), self.tmp)
+        (self.tmp / "a").mkdir()
+        (self.tmp / "a" / ".git").write_text("gitdir: /nowhere")
+        self.assertEqual(bq_common.home_root(self.tmp / "a"), self.tmp / "a")
+        mod = self.tmp / "super" / ".git" / "modules" / "b"
+        mod.mkdir(parents=True)
+        (self.tmp / "b").mkdir()
+        (self.tmp / "b" / ".git").write_text("gitdir: %s" % mod)
+        self.assertEqual(bq_common.home_root(self.tmp / "b"), self.tmp / "b")
 
     def test_config_overrides_project_and_spec(self):
         (self.tmp / "black-qat.config.json").write_text(

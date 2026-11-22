@@ -22,6 +22,7 @@ Some prose with | pipes | and BQ-001 mentioned.
 |----|-------|----------------|----------|----------|
 | BQ-001 | First | checks a | s1 | never |
 | BQ-002 | Second | checks b | s2 | pass 2020-01-01 |
+| BQ-003 | Third | checks c | s3 | never |
 
 Trailing prose.
 """
@@ -81,6 +82,57 @@ class BqRunTests(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(out.strip(), "1 passed, 2 failed: BQ-002, BQ-003")
 
+    def test_skip_with_reason(self):
+        self.make_suite(write_results([
+            {"id": "BQ-001", "status": "pass"},
+            {"id": "BQ-002", "status": "pass"},
+            {"id": "BQ-003", "status": "skip",
+             "reason": "needs ANTHROPIC_API_KEY"}]))
+        code, out = self.run_main()
+        self.assertEqual(code, 3)
+        self.assertEqual(out.strip(), "2 passed, 0 failed; 1 skipped: "
+                         "BQ-003 (needs ANTHROPIC_API_KEY)")
+
+    def test_fail_and_skip(self):
+        self.make_suite(write_results([
+            {"id": "BQ-001", "status": "pass"},
+            {"id": "BQ-002", "status": "fail"},
+            {"id": "BQ-005", "status": "skip", "reason": "needs Y"},
+            {"id": "BQ-004", "status": "skip", "reason": "needs X"},
+            {"id": "BQ-003", "status": "skip", "reason": "needs X"}]))
+        code, out = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertEqual(out.strip(), "1 passed, 1 failed: BQ-002; 3 skipped: "
+                         "BQ-003, BQ-004 (needs X), BQ-005 (needs Y)")
+
+    def test_all_skipped(self):
+        self.make_suite(write_results([
+            {"id": "BQ-001", "status": "skip", "reason": "needs network"}]))
+        code, out = self.run_main()
+        self.assertEqual(code, 3)
+        self.assertEqual(out.strip(),
+                         "0 passed, 0 failed; 1 skipped: BQ-001 (needs network)")
+
+    def test_skip_without_reason_is_unreadable(self):
+        for entry in ({"id": "BQ-001", "status": "skip"},
+                      {"id": "BQ-001", "status": "skip", "reason": ""},
+                      {"id": "BQ-001", "status": "skip", "reason": "   "},
+                      {"id": "BQ-001", "status": "skip", "reason": 7}):
+            self.make_suite(write_results([entry]))
+            code, out = self.run_main()
+            self.assertEqual(code, 2, entry)
+            self.assertIn("did not produce readable results", out)
+
+    def test_reason_normalised(self):
+        self.make_suite(write_results([
+            {"id": "BQ-001", "status": "skip",
+             "reason": "needs\n  A | B " + "x" * 100}]))
+        code, out = self.run_main()
+        self.assertEqual(code, 3)
+        reason = ("needs A / B " + "x" * 100)[:80]
+        self.assertEqual(out, "0 passed, 0 failed; 1 skipped: BQ-001 (%s)\n"
+                         % reason)
+
     def test_output_hides_raw(self):
         code_str = ("import sys,json,os;print('SECRET-ASSERTION');"
                     "print('SECRET-ASSERTION',file=sys.stderr);"
@@ -114,6 +166,21 @@ class BqRunTests(unittest.TestCase):
         self.assertEqual((self.store / ".last" / "target.txt").read_text(),
                          str(self.repo))
 
+    def test_run_from_worktree_uses_main_suite_and_targets_worktree(self):
+        gitdir = self.repo / ".git" / "worktrees" / "feature-x"
+        gitdir.mkdir(parents=True)
+        (gitdir / "commondir").write_text("../..")
+        wt = self.tmp / "feature-x"
+        wt.mkdir()
+        (wt / ".git").write_text("gitdir: %s" % gitdir)
+        self.make_suite(self._target_command())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = bq_run.main([], self.env, str(wt))
+        self.assertEqual((code, out.getvalue().strip()), (0, "1 passed, 0 failed"))
+        self.assertEqual((self.store / ".last" / "target.txt").read_text(),
+                         str(wt))
+
     def test_project_root_mismatch(self):
         self.make_suite(write_results([]), project_root=self.tmp / "other")
         code, out = self.run_main()
@@ -145,14 +212,19 @@ class BqRunTests(unittest.TestCase):
         (self.store / "SCENARIOS.md").write_text(REGISTER)
         self.make_suite(write_results([
             {"id": "BQ-001", "status": "pass"},
-            {"id": "BQ-002", "status": "fail"}]))
+            {"id": "BQ-002", "status": "fail"},
+            {"id": "BQ-003", "status": "skip", "reason": "needs a | b"}]))
         self.run_main()
         text = (self.store / "SCENARIOS.md").read_text()
         import datetime
         today = datetime.date.today().isoformat()
         expected = (REGISTER
-                    .replace("| never |", "| pass %s |" % today)
-                    .replace("| pass 2020-01-01 |", "| fail %s |" % today))
+                    .replace("| First | checks a | s1 | never |",
+                             "| First | checks a | s1 | pass %s |" % today)
+                    .replace("| pass 2020-01-01 |", "| fail %s |" % today)
+                    .replace("| Third | checks c | s3 | never |",
+                             "| Third | checks c | s3 | skip %s (needs a / b) |"
+                             % today))
         self.assertEqual(text, expected)
 
     def test_bin_is_executable_and_runs(self):

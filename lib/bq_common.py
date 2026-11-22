@@ -17,6 +17,24 @@ def find_root(cwd: str) -> Path:
     return start
 
 
+def home_root(root: Path) -> Path:
+    """The main checkout that owns `root`. A linked worktree's `.git` is a file
+    pointing at <main>/.git/worktrees/<name>, whose `commondir` leads back to
+    <main>/.git. Anything else (normal repo, submodule, no git) is its own home,
+    so every worktree of a repo shares one suite, spec and config."""
+    try:
+        text = (root / ".git").read_text().strip()
+        if not text.startswith("gitdir:"):
+            return root
+        gitdir = (root / text[len("gitdir:"):].strip()).resolve()
+        common = (gitdir / (gitdir / "commondir").read_text().strip()).resolve()
+    except OSError:
+        return root
+    if common.name == ".git" and common.is_dir():
+        return common.parent
+    return root
+
+
 def load_config(root: Path) -> dict:
     try:
         data = json.loads((root / CONFIG_NAME).read_text())

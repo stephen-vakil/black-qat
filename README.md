@@ -29,11 +29,21 @@ Requirements: `python3` on PATH; macOS or Linux.
 |---|---|---|
 | `/black-qat:spec` | Derives or revises the visible contract spec from your inputs | `SPEC_READY`, spec path, list of items needing a decision (or `BLOCKED: ...`) |
 | `/black-qat:scenarios` | Writes the plain-English scenario register (no test code), plus a gaps list | `SCENARIOS_READY`, count, review hint, new ambiguities (or `BLOCKED: ...`) |
-| `/black-qat:tests` | Writes the hidden tests and runs them once | `TESTS_READY` with pass/fail counts, or `TESTS_BLOCKED` with the reason |
-| `/black-qat:verify` | Runs the suite and reports | Totals line (`N passed, M failed: IDs`), then on failures: implementation bugs, spec ambiguities, test defects fixed |
+| `/black-qat:tests` | Writes the hidden tests and runs them once | `TESTS_READY` with pass/fail/skip counts, or `TESTS_BLOCKED` with the reason |
+| `/black-qat:verify` | Runs the suite and reports | Totals line (`N passed, M failed: IDs`, plus `; K skipped: IDs (reason)` if any), then: implementation bugs, spec ambiguities, test defects fixed, couldn't run |
 | `/black-qat:open` | Opens the review files in your viewer (human use) | One line; prints no content |
 
-The runner (`bq-run`) prints one line and exits 0 (all pass), 1 (failures) or 2 (error, e.g. no suite yet). Only the "Implementation bugs" section is meant to be forwarded to whoever writes the code; the other sections are for you.
+The runner (`bq-run`) prints one line and exits 0 (all pass), 1 (failures), 2 (error, e.g. no suite yet) or 3 (no failures, but some scenarios skipped). Only the "Implementation bugs" section is meant to be forwarded to whoever writes the code; the other sections are for you.
+
+## Pass, fail, skip
+
+Each scenario ends as one of:
+
+- **pass**: the promised behavior was observed.
+- **fail**: it wasn't, including when the system errors, crashes or can't be reached as the spec describes.
+- **skip**: it couldn't run because required environment is missing (an env var, credential or external service that the spec's How to run/reach section lists). The reason names what's missing, e.g. `needs ANTHROPIC_API_KEY`.
+
+A skip is never green: nothing was checked. It is never triaged or forwarded to implementers, since they can't fix your environment. A scenario may skip only for a precondition the spec lists, checked before the system is touched, so a broken product can't hide behind a skip.
 
 ## Spec tags and gaps
 
@@ -55,11 +65,11 @@ Confirmed items become `[stated: confirmed ...]`. Anything the contract doesn't 
 { "project": "my-project", "specPath": "docs/specs/contract.md" }
 ```
 
-`project` overrides the store name (default: repo directory name); `specPath` overrides the spec location (relative to the repo root). No other settings.
+`project` overrides the store name (default: repo directory name). `/black-qat:spec` creates this file with the current name on first use; commit it, so a renamed folder or a fresh clone still finds the same suite. Every git worktree of a repo shares the main checkout's suite, spec and config; runs from a worktree test that worktree by default; `specPath` overrides the spec location (relative to the repo root). No other settings.
 
 ## Human review
 
-Use `/black-qat:open` to open `SCENARIOS.md`, `GAPS.md`, `CHANGELOG.md` and the latest run summary in your default viewer (`open` on macOS, `xdg-open` on Linux). black-qat's skills tell agents to run it rather than read the store themselves.
+Use `/black-qat:open` to open `SCENARIOS.md`, `GAPS.md`, `CHANGELOG.md` and the latest run summary in your default viewer (`open` on macOS, `xdg-open` on Linux). To use a specific app, set `BQ_OPEN_CMD` to its command-line launcher, e.g. `"env": { "BQ_OPEN_CMD": "code" }` in your Claude Code settings for VS Code. black-qat's skills tell agents to run it rather than read the store themselves.
 
 ## How it hides the tests
 
@@ -67,6 +77,7 @@ Use `/black-qat:open` to open `SCENARIOS.md`, `GAPS.md`, `CHANGELOG.md` and the 
 - A `PreToolUse` hook shipped with the plugin denies any other agent's Read, Grep, Glob, Write, Edit and Bash calls that reference the store, and restricts the tester's file-edit tools (Write/Edit/MultiEdit/NotebookEdit) to the store and the spec file; its Bash is restricted by instruction only.
 - Only the root session may run `verify` or `open`; subagents are denied the runner (black-qat's own tester excepted). Only the root session may dispatch the tester.
 - The runner prints one summary line. Raw output stays in the store for the tester's triage.
+- The tester's reports have a fixed shape (status word, counts, decision items, behavior-only bug reports). A hook checks every report the tester hands back and bounces anything else, such as a list of the scenarios it wrote, so the tester has to resend it in the allowed shape.
 - The forwarded implementation-bug section is behavior-only: what was done, what was observed, what the spec requires. No test code, assertions, file names or IDs (the run summary line does list IDs).
 
 ## Guarantees and limits
@@ -81,6 +92,8 @@ Read these before relying on it.
 - **Only the root session can run `verify` and `open`** (black-qat's own tester excepted), and only the root can dispatch the tester.
 - **The system under test sees test inputs.** It runs during the suite and receives the tests' inputs; if that code logs incoming requests or arguments somewhere the coding agent can read, the agent sees them. The hook cannot prevent this.
 - The hook fails open: if it errors, the call is allowed.
+- **Skips are trusted.** Nothing checks that a skipped scenario's reason matches required environment the spec lists; the tester is instructed to skip only then. Skips are never green.
+- **The report check is structural.** It blocks extra lines and scenario IDs in the tester's reports, not a leak phrased inside an allowed line.
 
 ### Optional sandbox hardening
 
@@ -90,10 +103,10 @@ A plugin can't enable sandbox read-deny itself (no documented way; not confirmed
 { "sandbox": { "enabled": true, "filesystem": { "denyRead": ["~/.black-qat"] } } }
 ```
 
-Scope: this applies only to sandboxed shell commands. The built-in Read tool is governed by permission rules instead (for example a `Read` deny rule), and plugin hooks run outside the sandbox. The guard hook remains the primary enforcement. See `docs/design/build-notes.md` (Q4).
+Scope: this applies only to sandboxed shell commands. The built-in Read tool is governed by permission rules instead (for example a `Read` deny rule), and plugin hooks run outside the sandbox. The guard hook remains the primary enforcement. See `docs/platform-notes.md` (Q4).
 
 ## More
 
-- Design: `docs/design/2026-11-21-black-qat-design.md`
-- Platform findings: `docs/design/build-notes.md`
+- Design and known gaps: `docs/design.md`
+- Claude Code behavior black-qat relies on: `docs/platform-notes.md`
 - License: MIT
