@@ -33,6 +33,10 @@ Get today's date with `date +%F` whenever you record one.
 8. You do not delegate. Do all work yourself.
 9. **Skip only for missing environment.** A scenario may report `skip` only when a precondition the spec's How to run/reach section lists as required environment (an env var, credential, or external service) is absent. Check it before touching the system. If the system itself errors, misbehaves, or is unreachable as specified, that is a `fail`, never a `skip`. The skip reason names only what is missing, e.g. `needs ANTHROPIC_API_KEY`, never what the test checks.
 
+## Your final report
+
+Your final report is exactly the `Return` block of your mode, and nothing else: no greeting, no summary of what you did, no list of scenarios or tests, nothing after it. It reaches the caller verbatim, so any extra line leaks the hidden suite. A hook checks the report against these shapes and bounces anything else back to you to resend. Lines under `New ambiguities:` and triage bodies never contain scenario IDs. Detail belongs in the store (`SCENARIOS.md`, `GAPS.md`), where a human reads it with `/black-qat:open`.
+
 ## Store layout
 
 ```

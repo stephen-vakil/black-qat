@@ -4,6 +4,7 @@ import re
 from pathlib import Path
 from typing import Mapping, Optional
 
+import report
 from bq_common import TESTER_AGENT_TYPES, find_root, home_root, spec_path, store_home
 
 TEXT_KEYS = ("file_path", "notebook_path", "path", "pattern", "command", "glob")
@@ -66,6 +67,8 @@ def decide(event: dict, env: Mapping[str, str]) -> Optional[str]:
                 and tool_input.get("subagent_type") in TESTER_AGENT_TYPES):
             return DENY_DISPATCH
         if event.get("agent_type") in TESTER_AGENT_TYPES:
+            if tool == "SubagentHandback":
+                return report.handback_decision(event, env)
             if tool in WRITE_TOOLS and _tester_write_denied(tool_input, cwd, env):
                 return DENY_TESTER_WRITE
             return None

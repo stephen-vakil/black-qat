@@ -77,6 +77,7 @@ Use `/black-qat:open` to open `SCENARIOS.md`, `GAPS.md`, `CHANGELOG.md` and the 
 - A `PreToolUse` hook shipped with the plugin denies any other agent's Read, Grep, Glob, Write, Edit and Bash calls that reference the store, and restricts the tester's file-edit tools (Write/Edit/MultiEdit/NotebookEdit) to the store and the spec file; its Bash is restricted by instruction only.
 - Only the root session may run `verify` or `open`; subagents are denied the runner (black-qat's own tester excepted). Only the root session may dispatch the tester.
 - The runner prints one summary line. Raw output stays in the store for the tester's triage.
+- The tester's reports have a fixed shape (status word, counts, decision items, behavior-only bug reports). A hook checks every report the tester hands back and bounces anything else, such as a list of the scenarios it wrote, so the tester has to resend it in the allowed shape.
 - The forwarded implementation-bug section is behavior-only: what was done, what was observed, what the spec requires. No test code, assertions, file names or IDs (the run summary line does list IDs).
 
 ## Guarantees and limits
