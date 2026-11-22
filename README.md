@@ -92,6 +92,8 @@ Read these before relying on it.
 - **Only the root session can run `verify` and `open`** (black-qat's own tester excepted), and only the root can dispatch the tester.
 - **The system under test sees test inputs.** It runs during the suite and receives the tests' inputs; if that code logs incoming requests or arguments somewhere the coding agent can read, the agent sees them. The hook cannot prevent this.
 - The hook fails open: if it errors, the call is allowed.
+- **Skips are trusted.** Nothing checks that a skipped scenario's reason matches required environment the spec lists; the tester is instructed to skip only then. Skips are never green.
+- **The report check is structural.** It blocks extra lines and scenario IDs in the tester's reports, not a leak phrased inside an allowed line.
 
 ### Optional sandbox hardening
 
@@ -101,10 +103,10 @@ A plugin can't enable sandbox read-deny itself (no documented way; not confirmed
 { "sandbox": { "enabled": true, "filesystem": { "denyRead": ["~/.black-qat"] } } }
 ```
 
-Scope: this applies only to sandboxed shell commands. The built-in Read tool is governed by permission rules instead (for example a `Read` deny rule), and plugin hooks run outside the sandbox. The guard hook remains the primary enforcement. See `docs/design/build-notes.md` (Q4).
+Scope: this applies only to sandboxed shell commands. The built-in Read tool is governed by permission rules instead (for example a `Read` deny rule), and plugin hooks run outside the sandbox. The guard hook remains the primary enforcement. See `docs/platform-notes.md` (Q4).
 
 ## More
 
-- Design: `docs/design/2026-11-21-black-qat-design.md`
-- Platform findings: `docs/design/build-notes.md`
+- Design and known gaps: `docs/design.md`
+- Claude Code behavior black-qat relies on: `docs/platform-notes.md`
 - License: MIT

@@ -1,4 +1,6 @@
-# black-qat build notes: platform findings
+# black-qat platform notes
+
+Facts about Claude Code that black-qat relies on, verified by probing rather than assumed. Re-check them when Claude Code changes.
 
 Probed with Claude Code 2.1.323 (`claude -p --plugin-dir <repo> --allowedTools "Bash,Read,Skill,Agent"`, run from a scratch git repo; no permission bypass). Probe hook logged stdin JSON to `<scratchpad>/bq-probe.log` (scratchpad, via `BQ_PROBE_DIR`).
 
@@ -41,3 +43,12 @@ Sandbox read-deny is user/project settings (https://code.claude.com/docs/en/sand
 ```
 
 (`allowRead` re-opens subpaths; narrower path wins.) Caveats from the docs: `denyRead` applies only to sandboxed shell commands; the built-in Read tool is governed by permission rules instead (e.g. a `Read` deny rule). Plugin hooks run outside the sandbox. So the README should document this as **optional user hardening** with the snippet above; the guard hook remains the primary enforcement.
+
+## Q5. Can a hook enforce the shape of a subagent's report? (2026-11-22)
+
+- **SubagentStop** receives `agent_type`, `agent_id`, `stop_hook_active` and `last_assistant_message` (the subagent's final text). Its matcher filters on agent type; plugin agents are matched by the scoped name, anchored: `^black-qat:black-qat-tester$`.
+- Returning `{"decision": "block", "reason": ...}` keeps the subagent running and delivers `reason` as its next instruction. Claude Code caps consecutive stop-hook continuations (8 by default).
+- **Verified end to end** (headless `claude -p --plugin-dir`, plugin `hooks/hooks.json`): the tester was told to append a scenario list to its report; the SubagentStop hook blocked it with the contract message; the tester resent only the allowed lines; the parent received only those.
+- Subagents may instead deliver their report through a **SubagentHandback** tool call, whose `tool_input.message` is the delivered report; `last_assistant_message` then holds only closing text. black-qat checks that path in PreToolUse. Not exercised in the headless run (no handback occurred there); covered by unit tests.
+- PostToolUse `updatedToolOutput` can replace a built-in tool's output, but the Agent tool's output shape is undocumented, so black-qat bounces at the source instead of rewriting.
+- Source: https://code.claude.com/docs/en/hooks
