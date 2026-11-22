@@ -29,11 +29,21 @@ Requirements: `python3` on PATH; macOS or Linux.
 |---|---|---|
 | `/black-qat:spec` | Derives or revises the visible contract spec from your inputs | `SPEC_READY`, spec path, list of items needing a decision (or `BLOCKED: ...`) |
 | `/black-qat:scenarios` | Writes the plain-English scenario register (no test code), plus a gaps list | `SCENARIOS_READY`, count, review hint, new ambiguities (or `BLOCKED: ...`) |
-| `/black-qat:tests` | Writes the hidden tests and runs them once | `TESTS_READY` with pass/fail counts, or `TESTS_BLOCKED` with the reason |
-| `/black-qat:verify` | Runs the suite and reports | Totals line (`N passed, M failed: IDs`), then on failures: implementation bugs, spec ambiguities, test defects fixed |
+| `/black-qat:tests` | Writes the hidden tests and runs them once | `TESTS_READY` with pass/fail/skip counts, or `TESTS_BLOCKED` with the reason |
+| `/black-qat:verify` | Runs the suite and reports | Totals line (`N passed, M failed: IDs`, plus `; K skipped: IDs (reason)` if any), then: implementation bugs, spec ambiguities, test defects fixed, couldn't run |
 | `/black-qat:open` | Opens the review files in your viewer (human use) | One line; prints no content |
 
-The runner (`bq-run`) prints one line and exits 0 (all pass), 1 (failures) or 2 (error, e.g. no suite yet). Only the "Implementation bugs" section is meant to be forwarded to whoever writes the code; the other sections are for you.
+The runner (`bq-run`) prints one line and exits 0 (all pass), 1 (failures), 2 (error, e.g. no suite yet) or 3 (no failures, but some scenarios skipped). Only the "Implementation bugs" section is meant to be forwarded to whoever writes the code; the other sections are for you.
+
+## Pass, fail, skip
+
+Each scenario ends as one of:
+
+- **pass**: the promised behavior was observed.
+- **fail**: it wasn't, including when the system errors, crashes or can't be reached as the spec describes.
+- **skip**: it couldn't run because required environment is missing (an env var, credential or external service that the spec's How to run/reach section lists). The reason names what's missing, e.g. `needs ANTHROPIC_API_KEY`.
+
+A skip is never green: nothing was checked. It is never triaged or forwarded to implementers, since they can't fix your environment. A scenario may skip only for a precondition the spec lists, checked before the system is touched, so a broken product can't hide behind a skip.
 
 ## Spec tags and gaps
 
@@ -59,7 +69,7 @@ Confirmed items become `[stated: confirmed ...]`. Anything the contract doesn't 
 
 ## Human review
 
-Use `/black-qat:open` to open `SCENARIOS.md`, `GAPS.md`, `CHANGELOG.md` and the latest run summary in your default viewer (`open` on macOS, `xdg-open` on Linux). black-qat's skills tell agents to run it rather than read the store themselves.
+Use `/black-qat:open` to open `SCENARIOS.md`, `GAPS.md`, `CHANGELOG.md` and the latest run summary in your default viewer (`open` on macOS, `xdg-open` on Linux). To use a specific app, set `BQ_OPEN_CMD` to its command-line launcher, e.g. `"env": { "BQ_OPEN_CMD": "code" }` in your Claude Code settings for VS Code. black-qat's skills tell agents to run it rather than read the store themselves.
 
 ## How it hides the tests
 

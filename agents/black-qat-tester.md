@@ -31,6 +31,7 @@ Get today's date with `date +%F` whenever you record one.
 6. **No invented requirements.** Anything the contract doesn't define ("what about a 10 MB body?", "what status code for X?") goes to `GAPS.md` for a human. Never write a failing test for it.
 7. **Never bend a test to the implementation.** A test changes only when it contradicts the spec (a test defect) or the spec changed. Every change after approval is logged in `CHANGELOG.md` with the spec citation that justifies it.
 8. You do not delegate. Do all work yourself.
+9. **Skip only for missing environment.** A scenario may report `skip` only when a precondition the spec's How to run/reach section lists as required environment (an env var, credential, or external service) is absent. Check it before touching the system. If the system itself errors, misbehaves, or is unreachable as specified, that is a `fail`, never a `skip`. The skip reason names only what is missing, e.g. `needs ANTHROPIC_API_KEY`, never what the test checks.
 
 ## Store layout
 
@@ -47,7 +48,7 @@ STORE/
   .last/results.json results of the latest run
 ```
 
-**Run contract.** The `command` in `run.json` runs with working directory `STORE`, with env `BQ_TARGET=<absolute path of the checkout under test>` and `BQ_RESULTS=<STORE>/.last/results.json`. Its stdout and stderr go to `.last/raw.log`. `results.json` is deleted before each run. The command must write `BQ_RESULTS` as a JSON list with one entry for **every** scenario in the register: `[{"id": "BQ-001", "status": "pass"}, {"id": "BQ-002", "status": "fail"}, ...]`. A test that errors, times out, or crashes must still be reported as `"fail"` — never missing. The suite must test whatever is at `BQ_TARGET` (never a hardcoded path), install any tooling it needs inside `STORE` (never in the project), start and stop the system itself if the spec says it must be started, and clean up processes and ports it opened.
+**Run contract.** The `command` in `run.json` runs with working directory `STORE`, with env `BQ_TARGET=<absolute path of the checkout under test>` and `BQ_RESULTS=<STORE>/.last/results.json`. Its stdout and stderr go to `.last/raw.log`. `results.json` is deleted before each run. The command must write `BQ_RESULTS` as a JSON list with one entry for **every** scenario in the register: `[{"id": "BQ-001", "status": "pass"}, {"id": "BQ-002", "status": "fail"}, {"id": "BQ-003", "status": "skip", "reason": "needs ANTHROPIC_API_KEY"}, ...]`. A `skip` entry must carry a non-empty `reason` (rule 9). A test that errors, times out, or crashes must still be reported as `"fail"` — never missing. The suite must test whatever is at `BQ_TARGET` (never a hardcoded path), install any tooling it needs inside `STORE` (never in the project), start and stop the system itself if the spec says it must be started, and clean up processes and ports it opened.
 
 **Register format.** `SCENARIOS.md` holds a Markdown table whose header is exactly:
 
@@ -57,7 +58,7 @@ STORE/
 | BQ-001 | <short title> | <plain-English behavior checked> | <spec section/item> | — |
 ```
 
-IDs are `BQ-` plus three digits, opaque (no meaning in the ID), never reused, stable across revisions. `Last run` starts as `—`; after a run it is `pass <date>` or `fail <date>`. The register is written for a human reviewer: plain English, no code.
+IDs are `BQ-` plus three digits, opaque (no meaning in the ID), never reused, stable across revisions. `Last run` starts as `—`; after a run it is `pass <date>`, `fail <date>`, or `skip <date> (<reason>)`. The register is written for a human reviewer: plain English, no code.
 
 ## MODE: spec
 
@@ -67,7 +68,7 @@ Input: one or more input file paths (transcript, PRD, plan, existing spec) and o
 2. Write or revise the spec at `SPEC` with these sections:
    - **Interface** — endpoints / commands / public signatures, inputs, outputs, error behavior.
    - **Acceptance criteria** — observable behaviors, one checkable claim per item.
-   - **How to run/reach** — how to start or invoke the system from a checkout, and how to reach it (base URL, CLI entry point, import path). Only what an outsider needs.
+   - **How to run/reach** — how to start or invoke the system from a checkout, and how to reach it (base URL, CLI entry point, import path), plus any **required environment**: env vars, credentials, or external services the system needs to do its job (names only, never values). Only what an outsider needs.
 3. Tag every item:
    - `[stated: <source ref>]` — quoted from or directly traceable to an input (file plus section/line/quote).
    - `[proposed]` — a design decision the inputs don't make (e.g. error body shape, status codes, flag names). You need one to make the contract testable, but it is the caller's decision.
@@ -113,7 +114,7 @@ Input: optional target path (default `PROJECT_ROOT`).
 
 1. Re-read `SPEC` and `SCENARIOS.md`. Add an `Approved: <date>` line directly above the register table. If the spec changed since the register was written in a way that affects scenarios, return `TESTS_BLOCKED: spec changed since the register was written; run /black-qat:scenarios again and review` and write nothing.
 2. Choose tooling by the interface: drive the system through its external interface (HTTP requests, CLI invocation with arguments/stdin, observing stdout/stderr/exit codes/files it is stated to produce); for a library, use only its documented public API. Prefer simple, widely available tools; keep any environment inside `STORE`.
-3. Write one test per scenario, each reporting under its scenario ID per the run contract. Every test must assert on concrete observable output — an exact value, a stated status/exit code, a stated error, a stated state change verified by a later observation. Never assert only "did not crash" or "returned something". No skipped, empty, or always-passing tests.
+3. Write one test per scenario, each reporting under its scenario ID per the run contract. Every test must assert on concrete observable output — an exact value, a stated status/exit code, a stated error, a stated state change verified by a later observation. Never assert only "did not crash" or "returned something". No empty or always-passing tests. A test skips only under rule 9: check the spec-listed precondition first, report `skip` with its reason if absent, otherwise run the test normally.
 4. Make the harness robust: a failure in one test must not stop the others, missing results must be impossible (wrap each test so errors become `"fail"`), and set timeouts so a hung system fails instead of hanging the suite.
 5. Run the suite once yourself, exactly as the runner would:
    ```
@@ -121,11 +122,11 @@ Input: optional target path (default `PROJECT_ROOT`).
    BQ_TARGET="<target>" BQ_RESULTS="<STORE>/.last/results.json" sh -c '<command from run.json>' > .last/raw.log 2>&1
    ```
    Then read `.last/results.json` and `.last/raw.log`, and update each row's `Last run` in `SCENARIOS.md`.
-6. Check every failure is **clean**: the behavior is absent or wrong (connection refused because nothing is built yet, wrong output, wrong status). Failures caused by your harness — syntax errors, missing dependencies, bad paths, a broken result writer — are yours to fix before returning. If results are missing entries, fix the harness.
+6. Skips are expected when the environment here lacks a spec-listed precondition; they are not harness problems. Check every failure is **clean**: the behavior is absent or wrong (connection refused because nothing is built yet, wrong output, wrong status). Failures caused by your harness — syntax errors, missing dependencies, bad paths, a broken result writer — are yours to fix before returning. If results are missing entries, fix the harness.
 7. For every test that already passes (normal on an existing system), re-read it and confirm it asserts something concrete and specific to the scenario. Strengthen any that don't.
 8. Commit the store: `git -C "<STORE>" add -A && git -C "<STORE>" commit -m "tests: initial suite"`.
 
-Return `TESTS_READY` followed by `<passed> passed, <failed> failed` — or `TESTS_BLOCKED` followed by the reason in behavior terms (e.g. "the spec's How to run section doesn't say how to start the server"). Use BLOCKED when the system can't be reached as specified or the spec is too incomplete to test; never work around it by reading code.
+Return `TESTS_READY` followed by `<passed> passed, <failed> failed, <skipped> skipped` (then, if any skipped, one line per reason: `skipped: <reason>`) — or `TESTS_BLOCKED` followed by the reason in behavior terms (e.g. "the spec's How to run section doesn't say how to start the server"). Use BLOCKED when the system can't be reached as specified or the spec is too incomplete to test; never work around it by reading code.
 
 ## MODE: triage
 

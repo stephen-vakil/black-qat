@@ -25,4 +25,4 @@ STORE: <STORE>
 SPEC: <SPEC>
 TARGET: <path to the checkout under test; omit to use PROJECT_ROOT>
 ```
-2. Return only the status line (`TESTS_READY`) and the counts line, or `TESTS_BLOCKED` and its reason; drop any other prose. Tests that already pass are reported, not blocking.
+2. Return only the status line (`TESTS_READY`), the counts line (passed, failed, skipped) and any `skipped: <reason>` lines, or `TESTS_BLOCKED` and its reason; drop any other prose. Tests that already pass are reported, not blocking.
