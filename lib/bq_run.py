@@ -94,7 +94,8 @@ def main(argv, env: Mapping[str, str], cwd: str) -> int:
     parser.add_argument("--target")
     args = parser.parse_args(argv)
 
-    root = bq_common.find_root(cwd)
+    checkout = bq_common.find_root(cwd)       # what gets tested by default
+    root = bq_common.home_root(checkout)      # whose suite it is
     name = bq_common.project_name(root)
     store = bq_common.store_dir(root, env)
 
@@ -112,7 +113,7 @@ def main(argv, env: Mapping[str, str], cwd: str) -> int:
               % (name, project_root))
         return EXIT_ERROR
 
-    target = args.target or str(root)
+    target = args.target or str(checkout)
     last = store / ".last"
     last.mkdir(parents=True, exist_ok=True)
     results_path = last / "results.json"

@@ -65,7 +65,7 @@ Confirmed items become `[stated: confirmed ...]`. Anything the contract doesn't 
 { "project": "my-project", "specPath": "docs/specs/contract.md" }
 ```
 
-`project` overrides the store name (default: repo directory name); `specPath` overrides the spec location (relative to the repo root). No other settings.
+`project` overrides the store name (default: repo directory name). `/black-qat:spec` creates this file with the current name on first use; commit it, so a renamed folder or a fresh clone still finds the same suite. Every git worktree of a repo shares the main checkout's suite, spec and config; runs from a worktree test that worktree by default; `specPath` overrides the spec location (relative to the repo root). No other settings.
 
 ## Human review
 

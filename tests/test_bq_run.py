@@ -166,6 +166,21 @@ class BqRunTests(unittest.TestCase):
         self.assertEqual((self.store / ".last" / "target.txt").read_text(),
                          str(self.repo))
 
+    def test_run_from_worktree_uses_main_suite_and_targets_worktree(self):
+        gitdir = self.repo / ".git" / "worktrees" / "feature-x"
+        gitdir.mkdir(parents=True)
+        (gitdir / "commondir").write_text("../..")
+        wt = self.tmp / "feature-x"
+        wt.mkdir()
+        (wt / ".git").write_text("gitdir: %s" % gitdir)
+        self.make_suite(self._target_command())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = bq_run.main([], self.env, str(wt))
+        self.assertEqual((code, out.getvalue().strip()), (0, "1 passed, 0 failed"))
+        self.assertEqual((self.store / ".last" / "target.txt").read_text(),
+                         str(wt))
+
     def test_project_root_mismatch(self):
         self.make_suite(write_results([]), project_root=self.tmp / "other")
         code, out = self.run_main()

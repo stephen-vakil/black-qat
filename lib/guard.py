@@ -4,7 +4,7 @@ import re
 from pathlib import Path
 from typing import Mapping, Optional
 
-from bq_common import TESTER_AGENT_TYPES, find_root, spec_path, store_home
+from bq_common import TESTER_AGENT_TYPES, find_root, home_root, spec_path, store_home
 
 TEXT_KEYS = ("file_path", "notebook_path", "path", "pattern", "command", "glob")
 PATH_KEYS = ("file_path", "notebook_path", "path")
@@ -34,7 +34,7 @@ def _tester_write_denied(tool_input: dict, cwd: str, env: Mapping[str, str]) -> 
     home = store_home(env)
     if _under(target, os.path.realpath(home)):
         return False
-    return target != os.path.realpath(spec_path(find_root(cwd)))
+    return target != os.path.realpath(spec_path(home_root(find_root(cwd))))
 
 
 def _references_store(tool_input: dict, cwd: str, env: Mapping[str, str]) -> bool:

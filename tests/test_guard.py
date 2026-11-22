@@ -105,6 +105,17 @@ class GuardTests(unittest.TestCase):
         self.allowed(self.ev("Write", file_path=str(self.repo / "specs/my.md"), **kw))
         self.denied(self.ev("Write", file_path=str(self.repo / "docs/black-qat/spec.md"), **kw))
 
+    def test_tester_in_worktree_writes_main_spec(self):
+        gitdir = self.repo / ".git" / "worktrees" / "wt"
+        gitdir.mkdir(parents=True)
+        (gitdir / "commondir").write_text("../..")
+        wt = self.tmp / "wt"
+        wt.mkdir()
+        (wt / ".git").write_text("gitdir: %s" % gitdir)
+        kw = dict(agent_type=TESTER, agent_id="t1", cwd=wt)
+        self.allowed(self.ev("Write", file_path=str(self.repo / "docs/black-qat/spec.md"), **kw))
+        self.denied(self.ev("Write", file_path=str(wt / "docs/black-qat/spec.md"), **kw))
+
     def test_subagent_cannot_dispatch_tester(self):
         self.denied(self.ev("Agent", agent_type="general-purpose", agent_id="a1",
                             subagent_type=TESTER, prompt="x"))
